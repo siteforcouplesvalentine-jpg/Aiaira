@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+    <title>Aira Hunter Commander Pro</title>
+    <style>
+        :root {
+            --bg-color: #0e1117;
+            --gemini-blue: #4285f4;
+            --gemini-purple: #9b72cb;
+            --input-bg: #1e1f20;
+            --sidebar-bg: #17191c;
+            --danger: #ff4b2b;
+            --success: #28a745;
+            --accent-color: var(--gemini-blue); /* This changes on upgrade */
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body, html { margin: 0; padding: 0; height: 100dvh; width: 100vw; background: var(--bg-color); color: white; font-family: 'Google Sans', sans-serif; overflow: hidden; display: flex; flex-direction: column; transition: 0.5s; }
+
+        /* --- SCREEN SIDE SHADE --- */
+        body.typing-mode::before { content: ''; position: fixed; top: 0; left: 0; width: 40px; height: 100%; background: linear-gradient(to right, rgba(66, 133, 244, 0.15), transparent); z-index: 5; pointer-events: none; }
+        body.typing-mode::after { content: ''; position: fixed; top: 0; right: 0; width: 40px; height: 100%; background: linear-gradient(to left, rgba(66, 133, 244, 0.15), transparent); z-index: 5; pointer-events: none; }
+
+        /* --- SIDEBAR --- */
+        #sidebar { position: fixed; top: 0; left: -280px; width: 280px; height: 100%; background: var(--sidebar-bg); z-index: 1001; transition: 0.3s; padding: 25px; border-right: 1px solid rgba(255,255,255,0.1); }
+        #sidebar.open { transform: translateX(280px); }
+        .sidebar-item { padding: 15px; border-radius: 12px; cursor: pointer; margin-bottom: 8px; transition: 0.2s; color: #e8eaed; display: flex; align-items: center; gap: 10px; }
+        .sidebar-item:active { background: rgba(255,255,255,0.1); }
+        #overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; display: none; backdrop-filter: blur(4px); }
+
+        /* --- HEADER --- */
+        header { padding: 15px 25px; display: flex; justify-content: space-between; align-items: center; }
+        .menu-btn { font-size: 30px; cursor: pointer; color: #9aa0a6; }
+        #secret-trigger { width: 60px; height: 60px; cursor: pointer; }
+
+        /* --- CHAT AREA --- */
+        #chat-area { flex-grow: 1; display: flex; flex-direction: column; padding: 20px; overflow-y: auto; padding-bottom: 100px; position: relative; z-index: 1; }
+        .avatar { width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; position: relative; font-weight: bold; }
+        .avatar::after { content: ''; position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px; border-radius: 50%; border: 2.5px solid transparent; border-left: 2.5px solid var(--accent-color); border-top: 2.5px solid var(--gemini-purple); opacity: 0; }
+        .thinking .avatar::after { opacity: 1; animation: orbit 1s linear infinite; }
+        @keyframes orbit { 100% { transform: rotate(360deg); } }
+
+        /* --- MESSAGE BAR --- */
+        .bottom-section { position: fixed; bottom: 0; left: 0; width: 100%; padding: 10px 15px 30px; background: var(--bg-color); display: flex; justify-content: center; z-index: 100; }
+        .input-pill { width: 100%; max-width: 700px; background: var(--input-bg); border-radius: 35px; display: flex; align-items: center; padding: 5px 18px; border: 1px solid rgba(255,255,255,0.05); transition: 0.3s; }
+        .input-pill:focus-within { border: 1px solid var(--accent-color); box-shadow: 0 0 25px rgba(66, 133, 244, 0.2); }
+
+        input { background: none; border: none; color: white; flex-grow: 1; padding: 12px 0; outline: none; font-size: 16px; }
+
+        .attach-btn { font-size: 24px; color: var(--accent-color); margin-right: 12px; cursor: pointer; transition: 0.3s; }
+        .mic-container { display: flex; align-items: center; gap: 4px; cursor: pointer; margin: 0 12px; height: 30px; }
+        .bar { width: 3px; height: 8px; background: var(--accent-color); border-radius: 10px; transition: 0.3s ease; }
+        .mic-container.active .bar { animation: waveAnim 0.6s infinite ease-in-out; background: var(--danger); }
+        .bar:nth-child(2) { height: 14px; animation-delay: 0.1s; }
+        .bar:nth-child(3) { height: 10px; animation-delay: 0.2s; }
+        @keyframes waveAnim { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(2.2); } }
+
+        .send-btn { font-size: 28px; color: var(--accent-color); cursor: pointer; transform: rotate(-15deg); }
+
+        /* --- ADMIN ROOM --- */
+        #admin-room { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0b0e14; z-index: 2000; display: none; padding: 40px 25px; overflow-y: auto; }
+        .user-card { background: #17191c; border-radius: 20px; padding: 25px; border: 1px solid #222; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+        .exit-btn { width: 100%; margin-top: 50px; padding: 15px; background: #333; color: white; border: none; border-radius: 15px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <h2 id="sidebar-title" style="color: var(--accent-color); transition: 0.3s;">Aira Hunter</h2>
+        <div class="sidebar-item" id="premium-btn" onclick="upgradeToPremium()">💎 Upgrade Premium</div>
+        <div class="sidebar-item" onclick="location.reload()">✨ New Chat</div>
+        <div class="sidebar-item" style="color:var(--danger);" onclick="closeAll()">✕ Close</div>
+    </div>
+    
+    <div id="overlay" onclick="closeAll()"></div>
+
+    <header>
+        <div class="menu-btn" onclick="toggleMenu()">☰</div>
+        <div id="secret-trigger" onclick="handleSecret()"></div>
+    </header>
+
+    <div id="chat-area">
+        <div class="ai-row" id="main-ai">
+            <div class="avatar" id="main-avatar">A</div>
+            <div class="msg-container">
+                <div class="msg-text" id="ai-msg">Aira Hunter Commander Pro Ready. 🛡️💎</div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" style="display: none;" onchange="handleFileSelect(event)">
+
+    <div class="bottom-section">
+        <div class="input-pill">
+            <div class="attach-btn" onclick="document.getElementById('fileInput').click()">+</div>
+            <input type="text" id="userInput" placeholder="Ask Aira..." autocomplete="off" onfocus="toggleShade(true)" onblur="toggleShade(false)">
+            <div class="mic-container" id="micBtn" onclick="startMic()">
+                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+            </div>
+            <div class="send-btn" onclick="sendMsg()">➤</div>
+        </div>
+    </div>
+
+    <div id="admin-room">
+        <h1 style="color: var(--accent-color);">🛡️ Command Center</h1>
+        <div class="user-card">
+            <div>
+                <h3 id="admin-user-name">Commander_Main</h3>
+                <p id="user-status" style="color: var(--success);">Status: Online</p>
+            </div>
+            <button id="main-block-btn" style="background: var(--danger); color: white; padding: 10px 20px; border-radius: 10px; border:none;" onclick="toggleBlock()">BLOCK</button>
+        </div>
+        <button class="exit-btn" onclick="closeAll()">Exit</button>
+    </div>
+
+    <script>
+        const input = document.getElementById('userInput');
+        const aiMsg = document.getElementById('ai-msg');
+        const aiRow = document.getElementById('main-ai');
+        const micBtn = document.getElementById('micBtn');
+        let isBlocked = false;
+        let isPremium = false;
+        let tapCount = 0;
+
+        function toggleMenu() { document.getElementById('sidebar').classList.toggle('open'); document.getElementById('overlay').style.display = 'block'; }
+        function closeAll() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('admin-room').style.display = 'none'; document.getElementById('overlay').style.display = 'none'; }
+        
+        function handleSecret() {
+            tapCount++;
+            if(tapCount >= 3) {
+                let p = prompt("Enter Key:");
+                if(p === "1234") { document.getElementById('admin-room').style.display = 'block'; }
+                tapCount = 0;
+            }
+        }
+
+        // --- UPGRADE LOGIC ---
+        function upgradeToPremium() {
+            isPremium = true;
+            document.documentElement.style.setProperty('--accent-color', '#ffd700'); // Gold Color
+            document.getElementById('sidebar-title').innerText = "Aira ROYAL 👑";
+            document.getElementById('sidebar-title').style.color = "#ffd700";
+            document.getElementById('premium-btn').innerHTML = "✅ Premium Active";
+            document.getElementById('admin-user-name').innerText = "Royal Commander 👑";
+            aiMsg.innerText = "System Upgraded to ROYAL PREMIUM! 💎✨";
+            closeAll();
+        }
+
+        function toggleShade(show) {
+            if(show) document.body.classList.add('typing-mode');
+            else document.body.classList.remove('typing-mode');
+        }
+
+        function handleFileSelect(event) {
+            if(event.target.files[0]) aiMsg.innerText = "File Attached: " + event.target.files[0].name;
+        }
+
+        function toggleBlock() {
+            isBlocked = !isBlocked;
+            const status = document.getElementById('user-status');
+            const btn = document.getElementById('main-block-btn');
+            status.innerText = isBlocked ? "Status: BLOCKED" : "Status: Online";
+            status.style.color = isBlocked ? "var(--danger)" : "var(--success)";
+            btn.innerText = isBlocked ? "UNBLOCK" : "BLOCK";
+            btn.style.background = isBlocked ? "var(--success)" : "var(--danger)";
+        }
+
+        function startMic() {
+            micBtn.classList.add('active');
+            aiMsg.innerText = "Listening...🎙️";
+            setTimeout(() => { micBtn.classList.remove('active'); aiMsg.innerText = "Captured!"; }, 2500);
+        }
+
+        function sendMsg() {
+            if(isBlocked) return alert("System Blocked!");
+            if(!input.value.trim()) return;
+            aiRow.classList.add('thinking');
+            aiMsg.innerText = "Thinking...";
+            setTimeout(() => { 
+                aiMsg.innerText = "Processed: " + input.value; 
+                aiRow.classList.remove('thinking'); 
+            }, 1500);
+            input.value = "";
+        }
+    </script>
+</body>
+</html>
